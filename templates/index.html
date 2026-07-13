@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Flashcard Generator</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <h1> AI Flashcard Generator</h1>
+    
+    <form id="upload-form">
+        <input type="file" name="pdf" accept=".pdf" required><br>
+
+        <label for="count" style="color: white; font-weight: bold; margin-right: 10px;">How many Flashcards do you want?</label>
+        <input type="number" name="count" id="count" min="1" max="100" value="5" style="padding: 8px; border-radius: 5px; width: 60px; margin-bottom: 20px;" required><br>
+
+        <button type="submit">Generate Flashcards</button>
+    </form>
+
+    <div id="loading-spinner" class="spinner" style="display: none;"></div>
+    <div id="error-message" style="color: #FF5E5E; margin: 20px auto; max-width: 500px; font-weight: bold;"></div>
+    <div id="flashcards-box" class="flashcard-container"></div>
+
+    <script>
+        document.getElementById('upload-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const form = e.target;
+            const formData = new FormData(form);
+            
+            const spinner = document.getElementById('loading-spinner');
+            const errorBox = document.getElementById('error-message');
+            const container = document.getElementById('flashcards-box');
+            
+            // Reset visibility states
+            spinner.style.display = 'block';
+            errorBox.innerText = '';
+            container.innerHTML = '';
+
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                // If the server returned an error status (like 429 or 500)
+                if (!response.ok) {
+                    throw new Error(data.error || "Failed to compile flashcards.");
+                }
+
+                // Render Flashcards if successful
+                if (data.flashcards && data.flashcards.length > 0) {
+                    data.flashcards.forEach(item => {
+                        const card = document.createElement('div');
+                        card.className = 'flashcard';
+                        
+                        const inner = document.createElement('div');
+                        inner.className = 'flashcard-inner';
+                        
+                        const front = document.createElement('div');
+                        front.className = 'flashcard-front';
+                        front.innerText = item.front;
+                        
+                        const back = document.createElement('div');
+                        back.className = 'flashcard-back';
+                        back.innerText = item.back;
+                        
+                        inner.appendChild(front);
+                        inner.appendChild(back);
+                        card.appendChild(inner);
+                        
+                        card.addEventListener('click', () => {
+                            card.classList.toggle('flipped');
+                        });
+                        
+                        container.appendChild(card);
+                    });
+                } else {
+                    errorBox.innerText = "No structural flashcards could be parsed from the AI response.";
+                }
+
+            } catch (err) {
+                
+                errorBox.innerText = err.message;
+            } finally {
+                spinner.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
